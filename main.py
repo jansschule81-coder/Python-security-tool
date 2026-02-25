@@ -1,0 +1,142 @@
+from icmplib import ping
+import nmap
+import requests
+import whois
+import subprocess
+import time
+import datetime
+from collections import Counter
+def port():
+ lebron = input("enter website: ")
+ host = ping(lebron, count=4, interval=1, timeout=2, privileged=False)
+ target = host.address
+ range = "22-443"
+ scanner = nmap.PortScanner()
+ scanner.scan(target, range, arguments='-sS')
+ print("ip:", host.address)
+ for host in scanner.all_hosts():
+   for proto in scanner[host].all_protocols():
+    print(f'Protocol: {proto}')
+    ports = scanner[host][proto].keys()
+    for port in ports:
+     print(f'Port: {port}\tState: {scanner[host][proto][port]["state"]}')
+
+def fuzzer():
+ print("fuzzer")
+ b = input("website: ").strip()
+ with open('common.txt', 'r') as file:
+   for a in file:
+     a = a.strip() 
+     website = f'{b}{a}/'
+     response = requests.get(website)
+     if response.status_code == 200:
+       print(website)
+       
+def get_whois():
+  domain = input("domain: ")
+  w = whois.query(domain)
+  print(f"Domain: {domain}")
+  print(f"Registrar: {w.registrar}")
+  print(f"Creation Date: {w.creation_date}")
+  print(f"Expiration Date: {w.expiration_date}")
+  print(f"Name Servers: {w.name_servers}")
+  print(f"Status: {w.status}")
+  print(f"Emails: {w.emails}")
+import subprocess
+import time
+import datetime
+from collections import Counter
+
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+RED = '\033[91m'
+RESET = '\033[0m'
+BLUE = '\033[94m'
+
+THRESHOLD = 5      
+INTERVAL = 2      
+PORT = 8000        
+LOG_FILE = 'ddos_log.txt'
+
+def get_connections():
+    try:
+        cmd = (
+            f'Get-NetTCPConnection -State Established '
+            f'| Where-Object {{ $_.RemotePort -eq {PORT} }} '
+            f'| Select-Object -ExpandProperty RemoteAddress'
+        )
+        output = subprocess.check_output(
+            ['powershell', '-Command', cmd],
+            text=True,
+            stderr=subprocess.STDOUT
+        )
+        ips = [line.strip() for line in output.splitlines() if line.strip()]
+        return Counter(ips)
+    except Exception as e:
+        print(f"{YELLOW}Error fetching connections: {e}{RESET}")
+        return Counter()
+
+def print_bar(value, max_val=200, width=40):
+    if max_val <= 0:
+        max_val = 1
+    ratio = min(value / max_val, 1.0)
+    filled = int(width * ratio)
+    bar = '█' * filled + '░' * (width - filled)
+    return f'[{bar}] {value}/{max_val}'
+def dos():
+ print(f"{BLUE}DDOS monitor started")
+ print(f"Watching port {PORT}, threshold {THRESHOLD}")
+ print(f"Logs: {LOG_FILE}{RESET}")
+
+ try:
+    while True:
+        conn_count = get_connections()
+        total_conns = sum(conn_count.values())
+        print(f"\n{datetime.datetime.now().strftime('%H:%M:%S')} total connections: {total_conns}")
+        print("DEBUG connections:", dict(conn_count))
+
+        suspicious = {
+            ip: count
+            for ip, count in conn_count.most_common(10)
+            if count >= THRESHOLD
+        }
+
+        if suspicious:
+            print(f"{RED} Dos/DDOS detected{RESET}")
+            for ip, count in suspicious.items():
+                bar = print_bar(count)
+                print(f"{RED}  {ip}: {bar}{RESET}")
+
+            with open(LOG_FILE, 'a', encoding='utf-8') as f:
+                f.write(f"{datetime.datetime.now()}: alert {suspicious}\n")
+
+            print('\a')  # beep
+        else:
+            if conn_count:
+                top_ip, top_count = conn_count.most_common(1)[0]
+                print(f"{GREEN}ok: {top_ip}: {print_bar(top_count)}{RESET}")
+            else:
+                print(f"{GREEN}ok: no connections on this port {PORT}{RESET}")
+
+        time.sleep(INTERVAL)
+
+ except KeyboardInterrupt:
+    print(f"\n{BLUE}stopped: logs saved to: {LOG_FILE}.{RESET}")
+
+def main():
+ print("Jans Tool")
+ print("port scanner = 1")
+ print("fuzzer = 2")
+ print("domain lookup = 3")
+ print("dos scanner = 4")
+ a = int(input("Tool:"))
+ if a == 1:
+   port()
+ if a == 2:
+  fuzzer()
+ if a == 3:
+  get_whois()
+ if a == 4:
+    dos()
+while 1 == 1:
+  main()
