@@ -6,6 +6,13 @@ import subprocess
 import time
 import datetime
 from collections import Counter
+import socketio
+import json
+import random
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+from scapy.all import sniff, Raw
+from scapy.layers.http import HTTPRequest
 def port():
  lebron = input("enter website: ")
  host = ping(lebron, count=4, interval=1, timeout=2, privileged=False)
@@ -24,7 +31,7 @@ def port():
 def fuzzer():
  print("fuzzer")
  b = input("website: ").strip()
- with open('common.txt', 'r') as file:
+ with open('wordlists/common.txt', 'r', encoding='utf-8', errors='ignore') as file:
    for a in file:
      a = a.strip() 
      website = f'{b}{a}/'
@@ -34,7 +41,7 @@ def fuzzer():
        
 def get_whois():
   domain = input("domain: ")
-  w = whois.query(domain)
+  w = whois.whois(domain)
   print(f"Domain: {domain}")
   print(f"Registrar: {w.registrar}")
   print(f"Creation Date: {w.creation_date}")
@@ -42,10 +49,6 @@ def get_whois():
   print(f"Name Servers: {w.name_servers}")
   print(f"Status: {w.status}")
   print(f"Emails: {w.emails}")
-import subprocess
-import time
-import datetime
-from collections import Counter
 
 GREEN = '\033[92m'
 YELLOW = '\033[93m'
@@ -110,7 +113,7 @@ def dos():
             with open(LOG_FILE, 'a', encoding='utf-8') as f:
                 f.write(f"{datetime.datetime.now()}: alert {suspicious}\n")
 
-            print('\a')  # beep
+            print('\a')  
         else:
             if conn_count:
                 top_ip, top_count = conn_count.most_common(1)[0]
@@ -123,12 +126,46 @@ def dos():
  except KeyboardInterrupt:
     print(f"\n{BLUE}stopped: logs saved to: {LOG_FILE}.{RESET}")
 
+def http_https():
+    url = input("Input URL like this: http://192.168.2.183:3000/):")
+    url2 = input("Input URL like this: http://192.168.2.183:3000/api/messages): ").strip()
+    if not url.startswith(('http://', 'https://')):
+        print("Error: http:// or https://")
+        return
+    try:
+        multiplier = int(input("spam multi (1 for 10,000 As total): "))
+    except ValueError:
+        print("Error: Enter a valid number")
+        return
+    msg = "B" * 10000
+    message = {"message": msg}
+    headers = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Origin': url,
+    'Referer': url
+    }
+    for _ in range(multiplier):
+     r = requests.post(url2, json=message, headers=headers)
+     print("status code:", r.status_code)
+def sniffer():
+   def sniffing(packet):
+      if packet.haslayer(HTTPRequest):
+         host = packet[HTTPRequest].Host.decode()
+         path = packet[HTTPRequest].Path.decode()
+         method = packet[HTTPRequest].Method.decode()
+         print(f"http: {method} {host}{path}")
+   mangos = input("input port:")
+   sniff(filter=f"port {mangos}", prn=sniffing, store=False)
+         
 def main():
  print("Jans Tool")
  print("port scanner = 1")
  print("fuzzer = 2")
  print("domain lookup = 3")
  print("dos scanner = 4")
+ print("chat spammer: 5")
+ print("packet sniffer: 6")
  a = int(input("Tool:"))
  if a == 1:
    port()
@@ -138,5 +175,9 @@ def main():
   get_whois()
  if a == 4:
     dos()
+ if a == 5:
+    http_https()
+ if a == 6:
+    sniffer()
 while 1 == 1:
   main()
